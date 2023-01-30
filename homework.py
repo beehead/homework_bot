@@ -32,15 +32,16 @@ HOMEWORK_VERDICTS = {
 
 
 def check_tokens():
-    """Проверка наличия данных в .env"""
+    """Проверка наличия данных в .env."""
     return None not in (PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID)
 
 
 def send_message(bot, message):
-    """отправляет сообщение в Telegram чат,
+    """отправляет сообщение в Telegram чат.
     определяемый переменной окружения TELEGRAM_CHAT_ID.
     Принимает на вход два параметра: экземпляр класса Bot
-    и строку с текстом сообщения."""
+    и строку с текстом сообщения.
+    """
     try:
         bot.send_message(
             chat_id=TELEGRAM_CHAT_ID,
@@ -55,7 +56,8 @@ def get_api_answer(timestamp):
     """делает запрос к единственному эндпоинту API-сервиса.
     В качестве параметра в функцию передается временная метка.
     В случае успешного запроса должна вернуть ответ API,
-    приведя его из формата JSON к типам данных Python."""
+    приведя его из формата JSON к типам данных Python.
+    """
     headers = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
     payload = {'from_date': timestamp}
     try:
@@ -76,7 +78,8 @@ def get_api_answer(timestamp):
 def check_response(response):
     """проверяет ответ API на соответствие документации.
     В качестве параметра функция получает ответ API,
-    приведенный к типам данных Python."""
+    приведенный к типам данных Python.
+    """
     if isinstance(response['homeworks'], dict):
         logging.error('Ответ не является словарём')
         raise TypeError('Ответ не является словарём')
@@ -94,7 +97,8 @@ def parse_status(homework):
     только один элемент из списка домашних работ.
     В случае успеха, функция возвращает подготовленную для отправки
     в Telegram строку, содержащую один из вердиктов словаря
-    HOMEWORK_VERDICTS."""
+    HOMEWORK_VERDICTS.
+    """
     homework_name = homework['lesson_name']
     if homework['status'] not in HOMEWORK_VERDICTS:
         logging.error('Статус не найден!')
