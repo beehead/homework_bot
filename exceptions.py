@@ -1,4 +1,4 @@
-"""Собственные исключения"""
+"""Собственные исключения."""
 
 
 class TokensNotFoundException(Exception):

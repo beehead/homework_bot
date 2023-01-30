@@ -1,4 +1,4 @@
-"""Бот для проверки статуса домашних заданий"""
+"""Бот для проверки статуса домашних заданий."""
 import logging
 import os
 import sys
@@ -47,8 +47,8 @@ def send_message(bot, message):
             text=message
         )
         logging.debug('Сообщение отправлено в tg')
-    except Exception as error:
-        logging.error('Ошибка отправки в tg: %s', error)
+    except RuntimeError:
+        logging.error('Ошибка отправки в tg')
 
 
 def get_api_answer(timestamp):
@@ -66,13 +66,10 @@ def get_api_answer(timestamp):
         )
     except requests.exceptions.Timeout:
         logging.error('API timeout')
-        send_message(bot, 'API timeout')
     except requests.exceptions.ConnectionError:
         logging.error('API connection error')
-        send_message(bot, 'API connection error')
     except requests.exceptions.HTTPError:
         logging.error('API status not 200')
-        send_message(bot, 'API status not 200')
     return response.json()
 
 
@@ -82,7 +79,6 @@ def check_response(response):
     приведенный к типам данных Python."""
     if isinstance(response['homeworks'], dict):
         logging.error('Ответ не является словарём')
-        send_message(bot, 'Ответ не является словарём')
         raise TypeError('Ответ не является словарём')
     homeworks_list = response['homeworks']
     if homeworks_list == []:
@@ -102,8 +98,7 @@ def parse_status(homework):
     homework_name = homework['lesson_name']
     if homework['status'] not in HOMEWORK_VERDICTS:
         logging.error('Статус не найден!')
-        send_message(bot, 'Статус не найден!')
-        raise StatusNotFoundException('Статус не найден!')
+        raise exceptions.StatusNotFoundException('Статус не найден!')
     verdict = HOMEWORK_VERDICTS[homework['status']]
     logging.info('Получен новый статус')
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
@@ -120,10 +115,10 @@ def main():
     if not check_tokens():
         print('Отсутствуют данные для авторизации')
         logging.critical('Отсутствуют данные для авторизации')
-        raise TokensNotFoundException('Проверьте данные в .env')
+        raise exceptions.TokensNotFoundException('Проверьте данные в .env')
 
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    timestamp = int(time.time())
+    # timestamp = int(time.time())
     current_timestamp = 0
 
     while True:
@@ -137,9 +132,16 @@ def main():
                 print(message)
                 send_message(bot, message)
             current_timestamp = response.get('current_date')
-        except Exception as error:
-            message = f'Сбой в работе программы: {error}'
-            print(message)
+        except requests.exceptions.Timeout:
+            send_message(bot, 'API timeout error')
+        except requests.exceptions.ConnectionError:
+            send_message(bot, 'API connection error')
+        except requests.exceptions.HTTPError:
+            send_message(bot, 'API HTTP error')
+        except TypeError:
+            send_message(bot, 'Ответ не является словарём')
+        except exceptions.StatusNotFoundException:
+            send_message(bot, 'Неизвестный статус')
         finally:
             logging.debug('Цикл опроса API завершён, засыпаю')
             time.sleep(10)
