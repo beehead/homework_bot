@@ -72,6 +72,8 @@ def get_api_answer(timestamp):
         logging.error('API connection error')
     except requests.exceptions.HTTPError:
         logging.error('API status not 200')
+    if response.status_code != 200:
+        raise requests.exceptions.HTTPError(response.status_code)
     return response.json()
 
 
@@ -149,7 +151,7 @@ def main():
             send_message(bot, 'Неизвестный статус')
         finally:
             logging.debug('Цикл опроса API завершён, засыпаю')
-            time.sleep(10)
+            time.sleep(RETRY_PERIOD)
 
 
 if __name__ == '__main__':
