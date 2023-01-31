@@ -23,6 +23,12 @@ RETRY_PERIOD = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format=LOG_FORMAT,
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+
 
 HOMEWORK_VERDICTS = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
@@ -88,7 +94,7 @@ def check_response(response):
     try:
         homeworks_list = response['homeworks']
     except KeyError:
-        logging.error('В ответе отсутствует информация о задании')
+        logging.error('В ответе API отсутствует ключ "homeworks"')
     if homeworks_list == []:
         logging.debug('Новые статусы отсутствуют')
         return None
@@ -105,7 +111,10 @@ def parse_status(homework):
     в Telegram строку, содержащую один из вердиктов словаря
     HOMEWORK_VERDICTS.
     """
-    homework_name = homework['lesson_name']
+    try:
+        homework_name = homework['homework_name']
+    except KeyError:
+        logging.error('В ответе API тсуствует ключ "homework_name"')
     if homework['status'] not in HOMEWORK_VERDICTS:
         logging.error('Статус не найден!')
         raise exceptions.StatusNotFoundException('Статус не найден!')
@@ -116,12 +125,6 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format=LOG_FORMAT,
-        handlers=[logging.StreamHandler(sys.stdout)]
-    )
-
     if not check_tokens():
         print('Отсутствуют данные для авторизации')
         logging.critical('Отсутствуют данные для авторизации')
@@ -139,21 +142,11 @@ def main():
             if homeworks:
                 homework = homeworks[0]
                 message = parse_status(homework)
-                print(message)
                 send_message(bot, message)
             current_timestamp = response.get('current_date')
-        except requests.exceptions.Timeout:
-            send_message(bot, 'API timeout error')
-        except requests.exceptions.ConnectionError:
-            send_message(bot, 'API connection error')
-        except requests.RequestException:
-            send_message(bot, 'API request error')
-        except TypeError:
-            send_message(bot, 'Ответ не является словарём')
-        except KeyError:
-            send_message(bot, 'В ответе отсуствует информация о задании')
-        except exceptions.StatusNotFoundException:
-            send_message(bot, 'Неизвестный статус ответа API')
+        except Exception as error:
+            message = f'Возникла ошибка: {error}'
+            send_message(bot, message)
         finally:
             logging.debug('Цикл опроса API завершён, засыпаю')
             time.sleep(RETRY_PERIOD)
