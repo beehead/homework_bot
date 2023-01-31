@@ -88,17 +88,20 @@ def check_response(response):
     В качестве параметра функция получает ответ API,
     приведенный к типам данных Python.
     """
-    if isinstance(response['homeworks'], dict):
+    if not isinstance(response, dict):
         logging.error('Ответ не является словарём')
         raise TypeError('Ответ не является словарём')
     try:
         homeworks_list = response['homeworks']
     except KeyError:
         logging.error('В ответе API отсутствует ключ "homeworks"')
+    if not isinstance(homeworks_list, list):
+        logging.error('Неверный формат ответа о работе')
+        raise TypeError('Неверный формат ответа о работе')
     if homeworks_list == []:
         logging.debug('Новые статусы отсутствуют')
         return None
-    logging.debug('Ответ получен, трубуется анализ')
+    logging.debug('Ответ получен, требуется анализ')
     return homeworks_list
 
 
@@ -133,6 +136,7 @@ def main():
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     # timestamp = int(time.time())
     current_timestamp = 0
+    bot_last_error = ''
 
     while True:
         try:
@@ -146,7 +150,9 @@ def main():
             current_timestamp = response.get('current_date')
         except Exception as error:
             message = f'Возникла ошибка: {error}'
-            send_message(bot, message)
+            if message != bot_last_error:
+                send_message(bot, message)
+                bot_last_error = message
         finally:
             logging.debug('Цикл опроса API завершён, засыпаю')
             time.sleep(RETRY_PERIOD)
