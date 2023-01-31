@@ -48,7 +48,7 @@ def send_message(bot, message):
             text=message
         )
         logging.debug('Сообщение отправлено в tg')
-    except RuntimeError:
+    except telegram.error.TelegramError:
         logging.error('Ошибка отправки в tg')
 
 
@@ -70,8 +70,8 @@ def get_api_answer(timestamp):
         logging.error('API timeout')
     except requests.exceptions.ConnectionError:
         logging.error('API connection error')
-    except requests.exceptions.HTTPError:
-        logging.error('API status not 200')
+    except requests.RequestException:
+        logging.error('API request error')
     if response.status_code != 200:
         raise requests.exceptions.HTTPError(response.status_code)
     return response.json()
@@ -85,7 +85,10 @@ def check_response(response):
     if isinstance(response['homeworks'], dict):
         logging.error('Ответ не является словарём')
         raise TypeError('Ответ не является словарём')
-    homeworks_list = response['homeworks']
+    try:
+        homeworks_list = response['homeworks']
+    except KeyError:
+        logging.error('В ответе отсутствует информация о задании')
     if homeworks_list == []:
         logging.debug('Новые статусы отсутствуют')
         return None
@@ -143,10 +146,12 @@ def main():
             send_message(bot, 'API timeout error')
         except requests.exceptions.ConnectionError:
             send_message(bot, 'API connection error')
-        except requests.exceptions.HTTPError:
-            send_message(bot, 'API HTTP error')
+        except requests.RequestException:
+            send_message(bot, 'API request error')
         except TypeError:
             send_message(bot, 'Ответ не является словарём')
+        except KeyError:
+            send_message(bot, 'В ответе отсуствует информация о задании')
         except exceptions.StatusNotFoundException:
             send_message(bot, 'Неизвестный статус')
         finally:
