@@ -153,7 +153,7 @@ def main():
         except KeyError:
             send_message(bot, 'В ответе отсуствует информация о задании')
         except exceptions.StatusNotFoundException:
-            send_message(bot, 'Неизвестный статус')
+            send_message(bot, 'Неизвестный статус ответа API')
         finally:
             logging.debug('Цикл опроса API завершён, засыпаю')
             time.sleep(RETRY_PERIOD)
