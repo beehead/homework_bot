@@ -141,12 +141,6 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format=LOG_FORMAT,
-        handlers=[logging.StreamHandler(sys.stdout)]
-    )
-
     if not check_tokens():
         logging.critical('Отсутствуют данные для авторизации')
         raise exceptions.TokensNotFoundException('Проверьте данные в .env')
@@ -165,7 +159,7 @@ def main():
                 homework = homeworks[0]
                 message = parse_status(homework)
                 send_message(bot, message)
-            current_timestamp = response.get('current_date')
+                current_timestamp = response.get('current_date')
         except Exception as error:
             message = f'Возникла ошибка: {error}'
             if message != bot_last_error:
@@ -177,4 +171,9 @@ def main():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format=LOG_FORMAT,
+        handlers=[logging.StreamHandler(sys.stdout)]
+    )
     main()
