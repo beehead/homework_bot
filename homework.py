@@ -171,9 +171,6 @@ def main():
             if message != bot_last_error:
                 send_message(bot, message)
                 bot_last_error = message
-            raise exceptions.BotNotWorkingException(
-                'Что-то пошло не так.'
-            ) from error
         finally:
             logging.debug('Цикл опроса API завершён, засыпаю')
             time.sleep(RETRY_PERIOD)
