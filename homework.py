@@ -72,12 +72,19 @@ def get_api_answer(timestamp):
             timeout=10
         )
         logging.debug('Успешный запрос к API')
-    except requests.exceptions.Timeout:
+    except requests.exceptions.Timeout as exc:
         logging.error('API timeout')
-    except requests.exceptions.ConnectionError:
+        raise exceptions.GetAPIErrorException('API timeout') from exc
+    except requests.exceptions.ConnectionError as exc:
         logging.error('API connection error')
-    except requests.RequestException:
+        raise exceptions.GetAPIErrorException(
+            'API connection error'
+        ) from exc
+    except requests.RequestException as exc:
         logging.error('API request error')
+        raise exceptions.GetAPIErrorException(
+            'API request error'
+        ) from exc
     if response.status_code != HTTPStatus.OK:
         raise exceptions.GetAPIErrorException('API response not 200')
     return response.json()
