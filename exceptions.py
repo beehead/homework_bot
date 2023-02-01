@@ -19,3 +19,11 @@ class GetAPIErrorException(Exception):
 
 class ParseErrorException(Exception):
     """Проблема с разбором ответа от API."""
+
+
+class ResponseFormatException(Exception):
+    """Формат ответа неверный."""
+
+
+class BotNotWorkingException(Exception):
+    """Бот не работает, как запланировано."""

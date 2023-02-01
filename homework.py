@@ -100,8 +100,11 @@ def check_response(response):
         raise TypeError('Ответ не является словарём')
     try:
         homeworks_list = response['homeworks']
-    except KeyError:
+    except KeyError as exc:
         logging.error('В ответе API отсутствует ключ "homeworks"')
+        raise exceptions.ResponseFormatException(
+            'В ответе API отсутствует ключ "homeworks"'
+        ) from exc
     if not isinstance(homeworks_list, list):
         logging.error('Неверный формат ответа о работе')
         raise TypeError('Неверный формат ответа о работе')
@@ -168,6 +171,9 @@ def main():
             if message != bot_last_error:
                 send_message(bot, message)
                 bot_last_error = message
+            raise exceptions.BotNotWorkingException(
+                'Что-то пошло не так.'
+            ) from error
         finally:
             logging.debug('Цикл опроса API завершён, засыпаю')
             time.sleep(RETRY_PERIOD)
