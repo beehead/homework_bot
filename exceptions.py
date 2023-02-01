@@ -23,7 +23,3 @@ class ParseErrorException(Exception):
 
 class ResponseFormatException(Exception):
     """Формат ответа неверный."""
-
-
-class BotNotWorkingException(Exception):
-    """Бот не работает, как запланировано."""
