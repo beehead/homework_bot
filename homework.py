@@ -4,12 +4,13 @@ import os
 import sys
 import time
 
+from http import HTTPStatus
+from dotenv import load_dotenv
+
 import requests
 import telegram
-
 import exceptions
 
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -23,12 +24,6 @@ RETRY_PERIOD = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format=LOG_FORMAT,
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
-
 
 HOMEWORK_VERDICTS = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
@@ -39,7 +34,7 @@ HOMEWORK_VERDICTS = {
 
 def check_tokens():
     """Проверка наличия данных в .env."""
-    return None not in (PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID)
+    return all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])
 
 
 def send_message(bot, message):
@@ -49,13 +44,15 @@ def send_message(bot, message):
     и строку с текстом сообщения.
     """
     try:
+        logging.debug('Попытка отправки в tg')
         bot.send_message(
             chat_id=TELEGRAM_CHAT_ID,
             text=message
         )
         logging.debug('Сообщение отправлено в tg')
-    except telegram.error.TelegramError:
+    except telegram.error.TelegramError as exc:
         logging.error('Ошибка отправки в tg')
+        raise exceptions.SendToBotException('Неудачная попытка') from exc
 
 
 def get_api_answer(timestamp):
@@ -67,19 +64,22 @@ def get_api_answer(timestamp):
     headers = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
     payload = {'from_date': timestamp}
     try:
+        logging.debug('Попытка запроса к API')
         response = requests.get(
             ENDPOINT,
             headers=headers,
-            params=payload
+            params=payload,
+            timeout=10
         )
+        logging.debug('Успешный запрос к API')
     except requests.exceptions.Timeout:
         logging.error('API timeout')
     except requests.exceptions.ConnectionError:
         logging.error('API connection error')
     except requests.RequestException:
         logging.error('API request error')
-    if response.status_code != 200:
-        raise requests.exceptions.HTTPError(response.status_code)
+    if response.status_code != HTTPStatus.OK:
+        raise exceptions.GetAPIErrorException('API response not 200')
     return response.json()
 
 
@@ -98,7 +98,7 @@ def check_response(response):
     if not isinstance(homeworks_list, list):
         logging.error('Неверный формат ответа о работе')
         raise TypeError('Неверный формат ответа о работе')
-    if homeworks_list == []:
+    if not homeworks_list:
         logging.debug('Новые статусы отсутствуют')
         return None
     logging.debug('Ответ получен, требуется анализ')
@@ -116,8 +116,11 @@ def parse_status(homework):
     """
     try:
         homework_name = homework['homework_name']
-    except KeyError:
+    except KeyError as exc:
         logging.error('В ответе API тсуствует ключ "homework_name"')
+        raise exceptions.ParseErrorException(
+            'Отсутствует ключ с именем работы'
+        ) from exc
     if homework['status'] not in HOMEWORK_VERDICTS:
         logging.error('Статус не найден!')
         raise exceptions.StatusNotFoundException('Статус не найден!')
@@ -128,14 +131,19 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format=LOG_FORMAT,
+        handlers=[logging.StreamHandler(sys.stdout)]
+    )
+
     if not check_tokens():
-        print('Отсутствуют данные для авторизации')
         logging.critical('Отсутствуют данные для авторизации')
         raise exceptions.TokensNotFoundException('Проверьте данные в .env')
 
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    # timestamp = int(time.time())
-    current_timestamp = 0
+    # ноль был, чтобы бот подавал признаки жизни на время отладки :)
+    current_timestamp = int(time.time())
     bot_last_error = ''
 
     while True:
